@@ -3,19 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@remotion/cli": "^4.0.230",
+    "@remotion/media-utils": "^4.0.230",
+    "@remotion/player": "^4.0.230",
+    "@remotion/renderer": "^4.0.230",
+    "@remotion/transitions": "^4.0.230",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "openai": "^4.72.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
     "react-scripts": "5.0.1",
+    "remotion": "^4.0.230",
+    "styled-components": "^6.1.13",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "preview": "remotion preview src/Root.jsx",
+    "render": "remotion render src/Root.jsx"
   },
   "eslintConfig": {
     "extends": [
