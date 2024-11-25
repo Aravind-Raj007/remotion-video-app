@@ -6,7 +6,7 @@ export const generateScript = async (topic) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer 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'
+        'Authorization': `Bearer ${process.env.SCRIPT_API_KEY}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -48,7 +48,7 @@ export const generateImage = async (imagePrompt) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer 863010f8667e25179b56b5b1065bba44fd7903ce2b95318d84fbf53092be4455'
+        'Authorization': `Bearer ${process.env.IMAGE_API_KEY}`,
       },
       body: JSON.stringify({
         model: 'black-forest-labs/FLUX.1-schnell',
@@ -116,7 +116,7 @@ export const generateAudio = async (contentText) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer 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`,
+        'Authorization': `Bearer ${process.env.AUDIO_API_KEY}`,
       },
       body: JSON.stringify({
         model: 'tts-1',
@@ -128,13 +128,18 @@ export const generateAudio = async (contentText) => {
     if (!response.ok) {
       throw new Error(`Audio generation failed: ${response.statusText}`);
     }
+    const getCaptions = await {
 
+    }
     const audioBlob = await response.blob();
-    return URL.createObjectURL(audioBlob);
+
+    return {"url" : URL.createObjectURL(audioBlob), "timedCaptions": getCaptions};
   } catch (error) {
     console.error('Error generating audio:', error);
     throw error;
   }
 };
+
+
 
 // Make sure to export generateSpeech along with other functions
