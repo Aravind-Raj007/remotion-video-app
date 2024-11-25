@@ -6,7 +6,7 @@ export const generateScript = async (topic) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.SCRIPT_API_KEY}`,
+        'Authorization': process.env.SCRIPT_API_KEY,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -48,7 +48,7 @@ export const generateImage = async (imagePrompt) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.IMAGE_API_KEY}`,
+        'Authorization': process.env.IMAGE_API_KEY,
       },
       body: JSON.stringify({
         model: 'black-forest-labs/FLUX.1-schnell',
@@ -87,7 +87,7 @@ export const generateImage = async (imagePrompt) => {
 //       method: 'POST',
 //       headers: {
 //         'Content-Type': 'application/json',
-//         'Authorization': 'Bearer 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'
+//         'Authorization': process.env.AUDIO_API_KEY
 //       },
 //       body: JSON.stringify({
 //         model: 'tts-1',
@@ -116,7 +116,7 @@ export const generateAudio = async (contentText) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.AUDIO_API_KEY}`,
+        'Authorization': process.env.AUDIO_API_KEY,
       },
       body: JSON.stringify({
         model: 'tts-1',
