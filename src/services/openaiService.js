@@ -6,8 +6,8 @@ export const generateScript = async (topic) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': process.env.SCRIPT_API_KEY,
-      },
+        'Authorization': process.env.OPENAI_API_KEY
+      },  
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [{
@@ -48,7 +48,7 @@ export const generateImage = async (imagePrompt) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': process.env.IMAGE_API_KEY,
+        'Authorization': process.env.TOGETHER_API_KEY,
       },
       body: JSON.stringify({
         model: 'black-forest-labs/FLUX.1-schnell',
@@ -110,36 +110,146 @@ export const generateImage = async (imagePrompt) => {
 //   }
 // };
 
+// export const generateAudio = async (contentText) => {
+//   try {
+//     // First generate the audio
+//     const audioResponse = await fetch('https://api.openai.com/v1/audio/speech', {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': process.env.OPENAI_API_KEY,
+//       }, 
+//       body: JSON.stringify({
+//         model: 'tts-1',
+//         voice: 'alloy',
+//         input: contentText,
+//       }),
+//     });
+
+//     if (!audioResponse.ok) {
+//       throw new Error(`Audio generation failed: ${audioResponse.statusText}`);
+//     }
+
+//     const audioBlob = await audioResponse.blob();
+//     const audioUrl = URL.createObjectURL(audioBlob);
+
+//     // Create form data for the STT request
+//     const formData = new FormData();
+//     formData.append('file', audioBlob, 'audio.mp3');
+//     formData.append('model', 'whisper-1');
+//     formData.append('response_format', 'json');
+//     formData.append('timestamps', 'word');
+
+//     // Get word-level timestamps using Whisper API
+//     const sttResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+//       method: 'POST',
+//       headers: {
+    //         'Authorization':
+    //       },
+//       body: formData,
+//     });
+
+//     if (!sttResponse.ok) {
+//       const errorText = await sttResponse.text();
+//       console.error('STT API Error:', errorText);
+//       throw new Error(`STT processing failed: ${sttResponse.statusText}`);
+//     }
+
+//     const transcription = await sttResponse.json();
+//     console.log('Full Transcription Response:', transcription);
+
+//     if (!transcription.words) {
+//       throw new Error('Word-level timestamps not provided by the API');
+//     }
+
+//     const words = transcription.words.map(word => ({
+//       word: word.word,
+//       start: word.start,
+//       end: word.end
+//     }));
+
+//     return {
+//       audioUrl,
+//       totalDuration: words[words.length - 1]?.end || 0,
+//       words
+//     };
+//   } catch (error) {
+//     console.error('Error generating audio with timestamps:', error);
+//     throw error;
+//   }
+// }; //ok 
+
+
 export const generateAudio = async (contentText) => {
   try {
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    const speechResponse = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': process.env.AUDIO_API_KEY,
+        'Authorization': process.env.OPENAI_API_KEY,
       },
       body: JSON.stringify({
         model: 'tts-1',
         voice: 'alloy',
         input: contentText,
+        speed: 1.0, // Ensure consistent speed
+        response_format: 'mp3',
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`Audio generation failed: ${response.statusText}`);
+    if (!speechResponse.ok) {
+      throw new Error('Failed to generate speech');
     }
-    const getCaptions = await {
 
-    }
-    const audioBlob = await response.blob();
+    const audioBlob = await speechResponse.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
 
-    return {"url" : URL.createObjectURL(audioBlob), "timedCaptions": getCaptions};
+    // Fixed 5-second duration
+    const FIXED_DURATION = 5;
+    
+    // Split text and create precise word timings
+    const words = contentText.split(' ').map((word, index, array) => {
+      const wordDuration = FIXED_DURATION / array.length;
+      const start = index * wordDuration;
+      const end = (index + 1) * wordDuration;
+      
+      return {
+        word: word,
+        start: start,
+        end: end
+      };
+    });
+
+    return {
+      audioUrl,
+      words,
+      duration: FIXED_DURATION
+    };
+
   } catch (error) {
-    console.error('Error generating audio:', error);
+    console.error('Error in audio generation:', error);
     throw error;
   }
 };
 
-
+// Example usage:
+/*
+const handleGenerateAudio = async (text) => {
+  try {
+    const result = await generateAudio(text);
+    console.log('Audio URL:', result.audioUrl);
+    console.log('Words with timestamps:', result.words);
+    console.log('Total duration:', result.duration);
+    
+    // Example of using the timestamps
+    result.words.forEach(word => {
+      console.log(`${word.word}: ${word.start}s - ${word.end}s`);
+    });
+    
+  } catch (error) {
+    console.error('Failed to generate audio:', error);
+  }
+};
+*/
 
 // Make sure to export generateSpeech along with other functions
