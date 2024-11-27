@@ -18,29 +18,25 @@ const VideoRequestForm = () => {
     setError('');
     
     try {
-      // Generate script
       const scriptResponse = await generateScript(title);
       const scriptData = JSON.parse(scriptResponse);
-      // setScenes(scriptData.scenes);
-
-      // Generate all assets in parallel
-      const [images, audioUrls] = await Promise.all([
+  
+      const [images, audioData] = await Promise.all([
         Promise.all(scriptData.scenes.map(scene => generateImage(scene.imagePrompt))),
         Promise.all(scriptData.scenes.map(scene => generateAudio(scene.contentText)))
       ]);
-
+  
       setGeneratedImages(images);
-      setGeneratedAudio(audioUrls);
-
-      // Navigate to video page with the generated content
+      setGeneratedAudio(audioData);
+  
       navigate('/video', {
         state: {
           scenes: scriptData.scenes,
           images,
-          audioUrls
+          audioUrls: audioData
         }
       });
-
+  
     } catch (error) {
       console.error('Error:', error);
       setError('Failed to generate video content. Please try again.');
@@ -48,7 +44,6 @@ const VideoRequestForm = () => {
       setIsLoading(false);
     }
   };
-
   return (
     <div className="max-w-4xl mx-auto p-6">
       <form onSubmit={handleSubmit} className="mb-8">

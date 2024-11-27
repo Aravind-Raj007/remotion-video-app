@@ -1,77 +1,95 @@
-import { Sequence, AbsoluteFill, Audio, Img, useCurrentFrame, interpolate } from 'remotion';
-import { createTikTokStyleCaptions } from '@remotion/captions';
+import { Sequence, AbsoluteFill, Audio, Img, useCurrentFrame } from 'remotion';
 
 export const FRAME_RATE = 30;
-export const SCENE_DURATION = 5 * FRAME_RATE; // 4 seconds * 30fps = 120 frames
+export const SCENE_DURATION = 5 * FRAME_RATE;
+const TRANSITION_DURATION = 30;
 
-const TRANSITION_DURATION = 30; // Duration of transition in frames
-
-export const MainVideo = ({ scenes, images, audioUrls }) => {
-  // Debug log
-  console.log('MainVideo props:', { scenes, images, audioUrls });
+const WordPairComponent = ({ words, currentTime }) => {
+  const [firstWord, secondWord] = words;
+  const pairStartTime = firstWord.start;
+  const pairEndTime = secondWord.end;
+  const isActive = currentTime >= pairStartTime && currentTime <= pairEndTime;
+  const currentWordIndex = currentTime >= secondWord.start ? 1 : 0;
 
   return (
-    <AbsoluteFill>
-      {scenes.map((scene, index) => {
-        // Debug log for each scene
-        console.log('Scene data:', {
-          index,
-          scene,
-          image: images[index],
-          audio: audioUrls[index]
-        });
-
-        return (
-          <Sequence
-            key={index}
-            from={index * SCENE_DURATION - (index > 0 ? TRANSITION_DURATION : 0)}
-            durationInFrames={SCENE_DURATION + TRANSITION_DURATION}
-          >
-            <SceneComponent
-              image={images[index]}
-              audioData={audioUrls[index]}
-              text={scene.contentText}
-              isTransitioning={index > 0}
-            />
-          </Sequence>
-        );
-      })}
-    </AbsoluteFill>
+    <div
+      style={{
+        display: 'flex',
+        gap: '12px',
+        transform: `
+          scale(${isActive ? 1 : 0.95}) 
+          translateY(${isActive ? 0 : 10}px)
+        `,
+        opacity: isActive ? 1 : 0,
+        transition: 'all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)',
+      }}
+    >
+      {words.map((word, index) => (
+        <div
+          key={word.id}
+          style={{
+            display: 'inline-block',
+            background: currentWordIndex === index 
+              ? 'linear-gradient(135deg, #FFFFFF 0%, #F0F0F0 100%)'
+              : 'rgba(255, 255, 255, 0.15)',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            color: currentWordIndex === index ? '#000000' : 'rgba(255, 255, 255, 0.9)',
+            fontSize: '38px',
+            fontWeight: '800',
+            fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            boxShadow: currentWordIndex === index
+              ? '0 8px 20px rgba(0,0,0,0.3)'
+              : '0 4px 12px rgba(0,0,0,0.1)',
+            border: currentWordIndex === index
+              ? '2px solid rgba(255,255,255,0.9)'
+              : '2px solid rgba(255,255,255,0.2)',
+            transform: `scale(${currentWordIndex === index ? 1.05 : 1})`,
+            transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
+          }}
+        >
+          {word.text}
+        </div>
+      ))}
+    </div>
   );
 };
 
-const SceneComponent = ({ image, audioData, text, isTransitioning }) => {
+const SceneComponent = ({ image, audioData, sceneTransition }) => {
   const frame = useCurrentFrame();
-  
-  // Get audio duration from audioData or use default
-  const AUDIO_DURATION = audioData?.duration || 5; // in seconds
-  const BOUNCE_SPEED = 0.2;
-  const BOUNCE_HEIGHT = 6;
-  const FONT_SIZE = 80;
-
-  // Split text and create more precise word timings
-  const words = text.split(' ').map((word, index, array) => {
-    const wordDuration = AUDIO_DURATION / array.length;
-    const start = index * wordDuration;
-    // Add a small overlap between words to ensure smoother transitions
-    const end = start + wordDuration + 0.1;
-    return {
-      word: word,
-      start: start,
-      end: end
-    };
-  });
-
   const currentTimeInSeconds = frame / FRAME_RATE;
-  
-  // Find current word with a small buffer to handle timing edges
-  const currentWord = words.find(
-    word => 
-      currentTimeInSeconds >= word.start - 0.1 && 
-      currentTimeInSeconds <= word.end + 0.1
-  );
 
-  console.log('Time:', currentTimeInSeconds, 'Current Word:', currentWord?.word);
+  // Group words into pairs
+  const getWordPairs = (words) => {
+    const pairs = [];
+    for (let i = 0; i < words.length; i += 2) {
+      if (i + 1 < words.length) {
+        pairs.push([words[i], words[i + 1]]);
+      } else {
+        // Handle odd number of words
+        pairs.push([words[i], { ...words[i], text: '', start: words[i].end, end: words[i].end }]);
+      }
+    }
+    return pairs;
+  };
+
+  // Get current pair of words and transition state
+  const getCurrentPairAndState = (time, pairs) => {
+    const currentPairIndex = pairs.findIndex(pair => 
+      time >= pair[0].start && time <= pair[1].end
+    );
+
+    return {
+      currentPair: currentPairIndex !== -1 ? pairs[currentPairIndex] : pairs[0],
+      isTransitioning: currentPairIndex === -1
+    };
+  };
+
+  const words = audioData?.words || [];
+  const wordPairs = getWordPairs(words);
+  const { currentPair, isTransitioning } = getCurrentPairAndState(currentTimeInSeconds, wordPairs);
 
   return (
     <AbsoluteFill>
@@ -84,54 +102,80 @@ const SceneComponent = ({ image, audioData, text, isTransitioning }) => {
           objectPosition: 'center',
         }}
       />
-      {audioData?.audioUrl && <Audio src={audioData.audioUrl} />}
-
-      {currentWord && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: `translate(-50%, -50%) translateY(${Math.sin(frame * BOUNCE_SPEED) * BOUNCE_HEIGHT}px)`,
-            zIndex: 10,
-            fontSize: `${FONT_SIZE}px`,
-            fontFamily: '"Comic Sans MS", "Chalkboard SE", "Marker Felt", sans-serif',
-            fontWeight: '900',
-            color: '#ffffff',
-            textShadow: `
-              -3px -3px 0 #000,
-              3px -3px 0 #000,
-              -3px 3px 0 #000,
-              3px 3px 0 #000
-            `,
-            textAlign: 'center',
-            width: '100%',
-            padding: '0 20px',
-          }}
-        >
-          {currentWord.word}
-        </div>
-      )}
-
-      {/* Debug overlay */}
+      
+      {/* Background overlay */}
       <div
         style={{
           position: 'absolute',
-          bottom: 20,
-          left: 20,
-          color: 'white',
-          fontSize: '16px',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          padding: '10px',
-          zIndex: 11,
+          width: '100%',
+          height: '100%',
+          background: `
+            linear-gradient(
+              180deg,
+              rgba(0,0,0,0) 0%,
+              rgba(0,0,0,0.4) 70%,
+              rgba(0,0,0,0.7) 100%
+            )
+          `,
+        }}
+      />
+
+      {audioData?.audioUrl && <Audio src={audioData.audioUrl} />}
+      
+      {/* Caption container */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '22%',
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '0 20px',
+          zIndex: 10,
+          perspective: '1000px',
         }}
       >
-        Time: {currentTimeInSeconds.toFixed(2)}s
-        <br />
-        Word: {currentWord?.word || 'none'}
-        <br />
-        Duration: {AUDIO_DURATION}s
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            transform: `
+              translateY(${isTransitioning ? -5 : 0}px)
+              scale(${isTransitioning ? 0.98 : 1})
+            `,
+            transition: 'all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)',
+          }}
+        >
+          {currentPair && (
+            <WordPairComponent
+              words={currentPair}
+              currentTime={currentTimeInSeconds}
+            />
+          )}
+        </div>
       </div>
     </AbsoluteFill>
   );
-}; 
+};
+
+export const MainVideo = ({ scenes, images, audioUrls }) => {
+  return (
+    <AbsoluteFill>
+      {scenes.map((scene, index) => (
+        <Sequence
+          key={index}
+          from={index * SCENE_DURATION - (index > 0 ? TRANSITION_DURATION : 0)}
+          durationInFrames={SCENE_DURATION + TRANSITION_DURATION}
+        >
+          <SceneComponent
+            image={images[index]}
+            audioData={audioUrls[index]}
+            sceneTransition={index > 0}
+          />
+        </Sequence>
+      ))}
+    </AbsoluteFill>
+  );
+};
