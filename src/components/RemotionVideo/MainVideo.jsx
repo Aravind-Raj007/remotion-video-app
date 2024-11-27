@@ -1,4 +1,5 @@
 import { Sequence, AbsoluteFill, Audio, Img, useCurrentFrame } from 'remotion';
+import { useCallback, useEffect } from 'react';
 
 export const FRAME_RATE = 30;
 export const SCENE_DURATION = 5 * FRAME_RATE;
@@ -81,9 +82,27 @@ const SceneComponent = ({ image, audioData, sceneTransition }) => {
       time >= pair[0].start && time <= pair[1].end
     );
 
+    // If we're past the last pair's end time, stay on the last pair
+    if (currentPairIndex === -1 && pairs.length > 0) {
+      const lastPairEndTime = pairs[pairs.length - 1][1].end;
+      if (time > lastPairEndTime) {
+        return {
+          currentPair: pairs[pairs.length - 1],
+          isTransitioning: false
+        };
+      }
+      // If we're before the first pair's start time, show the first pair
+      if (time < pairs[0][0].start) {
+        return {
+          currentPair: pairs[0],
+          isTransitioning: false
+        };
+      }
+    }
+
     return {
       currentPair: currentPairIndex !== -1 ? pairs[currentPairIndex] : pairs[0],
-      isTransitioning: currentPairIndex === -1
+      isTransitioning: false
     };
   };
 
@@ -142,8 +161,8 @@ const SceneComponent = ({ image, audioData, sceneTransition }) => {
             justifyContent: 'center',
             alignItems: 'center',
             transform: `
-              translateY(${isTransitioning ? -5 : 0}px)
-              scale(${isTransitioning ? 0.98 : 1})
+              translateY(${0}px)
+              scale(${1})
             `,
             transition: 'all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)',
           }}
@@ -161,13 +180,36 @@ const SceneComponent = ({ image, audioData, sceneTransition }) => {
 };
 
 export const MainVideo = ({ scenes, images, audioUrls }) => {
+  // Add preloading function
+  const preloadImages = useCallback(async () => {
+    const loadImage = (src) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    };
+
+    try {
+      await Promise.all(images.map(src => loadImage(src)));
+    } catch (error) {
+      console.error('Error preloading images:', error);
+    }
+  }, [images]);
+
+  // Preload images when component mounts
+  useEffect(() => {
+    preloadImages();
+  }, [preloadImages]);
+
   return (
     <AbsoluteFill>
       {scenes.map((scene, index) => (
         <Sequence
           key={index}
-          from={index * SCENE_DURATION - (index > 0 ? TRANSITION_DURATION : 0)}
-          durationInFrames={SCENE_DURATION + TRANSITION_DURATION}
+          from={index * SCENE_DURATION}
+          durationInFrames={SCENE_DURATION}
         >
           <SceneComponent
             image={images[index]}
